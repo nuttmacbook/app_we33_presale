@@ -23,8 +23,8 @@ contract Constant {
 }
 
 contract Storage is Constant {
-    bool _initialized;
-    address public _owner;
+    bool initialized;
+    address public owner;
 
     string public name;
     string public symbol;
@@ -46,7 +46,7 @@ contract FairLaunchToken is Storage {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
     modifier onlyOwner() {
-        require(msg.sender == _owner, "Not owner");
+        require(msg.sender == owner, "Not owner");
         _;
     }
 
@@ -57,10 +57,10 @@ contract FairLaunchToken is Storage {
         address _owner,
         uint256 _initialSupply
     ) external {
-        require(!_initialized, "Already initialized");
+        require(!initialized, "Already initialized");
 
-        _initialized = true;
-        _owner = _owner;
+        initialized = true;
+        owner = _owner;
 
         name = _name;
         symbol = _symbol;
@@ -154,7 +154,7 @@ contract FairLaunchToken is Storage {
 
         tether.transfer(0xd12D7Aa377D059CF77B33a7Eb8039dB7900337e6, amountToSplit);
         tether.transfer(0x2B7d1004D17174c6f633cd5A06F8F70F9ee741C4, amountToSplit);
-        tether.transfer(_owner, amount - (amountToSplit * 2));
+        tether.transfer(owner, amount - (amountToSplit * 2));
 
         _mint(to, amount);
         _mint(referrer, amount / 10);

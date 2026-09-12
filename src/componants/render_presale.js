@@ -425,7 +425,7 @@ function readSale(d, o = {}) {
     listing: or('listingPrice', LISTING_PRICE),
     start: seconds('startTime'),
     end: seconds('endTime'),
-    minBuy: or('minBuy', 10n * WAD),
+    minBuy: or('minBuy', 1n * WAD),
     maxBuy: or('maxBuy', 0n),
     finalized: Boolean(g('finalized')),
   };
