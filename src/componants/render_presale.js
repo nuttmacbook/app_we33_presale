@@ -148,7 +148,13 @@ const TERMS_HTML = /*html*/`
 const RUNTIME = `if(!window.__wp){window.__wp={
 q:function(r,n){return document.getElementById(r+'-'+n)},
 lock:function(on){document.body.style.overflow=on?'hidden':''},
-open:function(r,n){var e=this.q(r,n);if(e){e.classList.add('is-open');this.lock(1)}},
+open:function(r,n){var e=this.q(r,n);if(!e)return;
+// fixed positioning breaks inside an ancestor with container-type, overflow,
+// transform or filter, so the dialog is reparented to <body> before it shows
+if(e.parentNode!==document.body)document.body.appendChild(e);
+e.classList.add('is-open');this.lock(1)},
+clean:function(r){var l=document.querySelectorAll('body > [data-wp]');
+for(var i=0;i<l.length;i++){if(l[i].getAttribute('data-wp')!==r)l[i].remove()}},
 close:function(r,n){var e=this.q(r,n);if(e){e.classList.remove('is-open');this.lock(0)}
 if(n==='status'&&this.dirty){this.dirty=0;this.refresh()}},
 refresh:function(){
@@ -162,6 +168,7 @@ m.setAttribute('data-state',state);
 var t=this.q(r,'status-title');if(t)t.textContent=title;
 var g=this.q(r,'status-msg');if(g)g.textContent=msg||'';
 var x=this.q(r,'status-tx');if(x){x.textContent=tx||'';x.style.display=tx?'':'none';x.setAttribute('data-copy',tx||'')}
+if(m.parentNode!==document.body)document.body.appendChild(m);
 m.classList.add('is-open');this.lock(1)},
 run:function(r,names,args,label){
 var f=this.pick(names),s=this;
@@ -452,9 +459,12 @@ function pctOf(value, total) {
 
 function styles(rid) {
   const R = `#${rid}`;
+  // Dialogs are moved to <body> when they open, so they cannot be styled
+  // through an ancestor. They carry data-wp="<rid>" and are scoped by that.
+  const M = `[data-wp="${rid}"]`;
 
   return /*html*/`<style>
-${R}{
+#${rid}-root,${M}{
   --mint:#2FE884;
   --gold:#F2E85C;
   --cyan:#22C9E8;
@@ -466,15 +476,22 @@ ${R}{
   --ink-faint:rgba(243,245,243,.34);
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
   --grad:linear-gradient(135deg,#4BF092,#25DD8B 45%,var(--cyan));
+  display:block;width:100%;max-width:100%;color:var(--ink);
+}
+#${rid}-root *,${M} *{box-sizing:border-box;min-width:0}
+${M}{font-feature-settings:"tnum" 1;-webkit-font-smoothing:antialiased}
+${M} .wp-dialog{scrollbar-width:thin;scrollbar-color:rgba(47,232,132,.3) transparent}
+${M} .wp-dialog::-webkit-scrollbar{width:5px}
+${M} .wp-dialog::-webkit-scrollbar-thumb{background:rgba(47,232,132,.28);border-radius:999px}
+${R}{
   --tile:clamp(10px,1.3cqw,13px);
   --block:clamp(12px,1.6cqw,15px);
   --panel:clamp(14px,1.8cqw,20px);
   container-type:inline-size;container-name:wp;
   display:block;position:relative;isolation:isolate;overflow:hidden;width:100%;max-width:100%;
-  color:var(--ink);background:var(--bg);font-feature-settings:"tnum" 1;
-  padding:0 clamp(12px,2.6cqw,30px) clamp(26px,4cqw,52px);border-radius:var(--panel);
+  background:var(--bg);font-feature-settings:"tnum" 1;
+  padding:0 clamp(12px,2.6cqw,30px) clamp(26px,4cqw,52px);border-radius:clamp(14px,1.8cqw,20px);
 }
-${R} *{box-sizing:border-box;min-width:0}
 ${R} .wp-glow{
   position:absolute;left:50%;top:clamp(-200px,-20cqw,-120px);width:min(900px,150%);height:clamp(340px,44cqw,540px);
   transform:translateX(-50%);pointer-events:none;z-index:0;filter:blur(clamp(56px,8cqw,92px));opacity:.46;
@@ -504,15 +521,15 @@ ${R} .wp-sub{margin:7px 0 0;font-size:clamp(9.5px,1.3cqw,11.5px);line-height:1.6
 ${R} .wp-quiet{margin:0;font-size:clamp(9.5px,1.4cqw,11px);line-height:1.6;color:var(--ink-faint)}
 
 /* ---------- buttons ---------- */
-${R} .wp-cta{
+${R} .wp-cta,${M} .wp-cta{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:0;flex:none;
   white-space:nowrap;padding:9px clamp(13px,1.7cqw,20px);border-radius:999px;color:#06301A;font:inherit;font-weight:700;
   font-size:clamp(10.5px,1.4cqw,12.5px);letter-spacing:.06em;text-transform:uppercase;background:var(--grad);
   box-shadow:0 0 0 1px rgba(255,255,255,.22) inset,0 12px 26px -12px rgba(34,201,232,.9);
   transition:transform .16s ease,filter .16s ease;
 }
-${R} .wp-cta:hover{transform:translateY(-1px);filter:saturate(1.1)}
-${R} .wp-cta:disabled{cursor:not-allowed;opacity:.4;transform:none;box-shadow:none;filter:none}
+${R} .wp-cta:hover,${M} .wp-cta:hover{transform:translateY(-1px);filter:saturate(1.1)}
+${R} .wp-cta:disabled,${M} .wp-cta:disabled{cursor:not-allowed;opacity:.4;transform:none;box-shadow:none;filter:none}
 ${R} .wp-wallet{
   display:inline-flex;align-items:center;gap:8px;flex:none;cursor:pointer;white-space:nowrap;
   padding:7px clamp(11px,1.4cqw,15px);border-radius:999px;border:1px solid rgba(47,232,132,.3);
@@ -521,7 +538,7 @@ ${R} .wp-wallet{
   transition:border-color .16s ease,background .16s ease;
 }
 ${R} .wp-wallet:hover{border-color:rgba(47,232,132,.7);background:rgba(47,232,132,.08)}
-${R} button:focus-visible,${R} input:focus-visible{outline:2px solid var(--mint);outline-offset:3px}
+${M} button:focus-visible,${M} input:focus-visible{outline:2px solid var(--mint);outline-offset:3px}
 
 /* ---------- nav ---------- */
 ${R} .wp-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:clamp(14px,2cqw,20px) 0 clamp(20px,3.4cqw,42px)}
@@ -753,11 +770,25 @@ ${R} .wp-foot p{margin:0;max-width:64ch;font-size:clamp(8.5px,1.2cqw,10.5px);lin
 ${R} .wp-link{cursor:pointer;border:0;background:none;padding:0;font:inherit;font-size:clamp(9.5px,1.3cqw,11.5px);font-weight:600;color:var(--mint);text-decoration:underline;text-underline-offset:3px}
 
 /* ---------- modals ---------- */
-${R} .wp-modal{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;padding:16px}
-${R} .wp-modal.is-open{display:flex}
-${R} .wp-bg{position:absolute;inset:0;background:rgba(3,6,4,.78);backdrop-filter:blur(6px)}
-${R} .wp-dialog{
-  position:relative;width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;
+${M}.wp-modal{
+  position:fixed;inset:0;z-index:2147483000;display:none;
+  align-items:flex-start;justify-content:center;   /* never centre with align-items:
+                                                      a taller dialog would overflow
+                                                      upward and be unreachable */
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  padding:12px;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));
+}
+${M}.wp-modal.is-open{display:flex}
+${M} .wp-bg{position:absolute;inset:0;background:rgba(3,6,4,.78);backdrop-filter:blur(6px)}
+${M} .wp-dialog{
+  position:relative;width:100%;max-width:520px;display:block;
+  margin:auto;                                     /* centres when there is room,
+                                                      never clips when there is not */
+  max-height:calc(100vh - 24px);
+  max-height:calc(100dvh - 24px);
+  /* the whole card scrolls: a flex column whose children cannot shrink will
+     spill outside the card background instead */
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
   border:1px solid rgba(47,232,132,.2);border-radius:20px;padding:18px;color:var(--ink);
   background:
     radial-gradient(100% 70% at 50% -10%, rgba(47,232,132,.14), transparent 60%),
@@ -765,59 +796,60 @@ ${R} .wp-dialog{
     linear-gradient(180deg,#101613 0%, #0B100D 60%, #070908 100%);
   box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 40px 90px -40px rgba(0,0,0,1);
 }
-${R} .wp-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
-${R} .wp-dialog-head h3{margin:4px 0 0;font-size:17px;font-weight:600;letter-spacing:-.01em}
-${R} .wp-eyebrow{margin:0;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--mint)}
-${R} .wp-x{flex:none;width:30px;height:30px;border-radius:999px;cursor:pointer;border:1px solid var(--hair);background:rgba(255,255,255,.03);color:var(--ink-dim);font-size:15px;line-height:1}
-${R} .wp-x:hover{color:var(--ink);border-color:rgba(47,232,132,.5)}
-${R} .wp-review{margin-bottom:12px;padding:6px 14px;border-radius:13px;border:1px solid rgba(47,232,132,.24);background:rgba(47,232,132,.07)}
-${R} .wp-review > div{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed rgba(255,255,255,.08)}
-${R} .wp-review > div:last-child{border-bottom:0}
-${R} .wp-review span{font-size:11.5px;color:var(--ink-dim)}
-${R} .wp-review b{font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:-.01em;text-align:right;color:var(--ink)}
-${R} .wp-review > div:first-child b,${R} .wp-review > div:nth-child(4) b{color:var(--gold)}
-${R} .wp-review-ref{color:var(--mint)!important;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-${R} .wp-doc{
-  overflow-y:auto;padding:14px 16px;margin-bottom:12px;border:1px solid var(--hair);border-radius:14px;
+${M} .wp-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+${M} .wp-dialog-head h3{margin:4px 0 0;font-size:17px;font-weight:600;letter-spacing:-.01em}
+${M} .wp-eyebrow{margin:0;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--mint)}
+${M} .wp-x{flex:none;width:30px;height:30px;border-radius:999px;cursor:pointer;border:1px solid var(--hair);background:rgba(255,255,255,.03);color:var(--ink-dim);font-size:15px;line-height:1}
+${M} .wp-x:hover{color:var(--ink);border-color:rgba(47,232,132,.5)}
+${M} .wp-review{margin-bottom:12px;padding:6px 14px;border-radius:13px;border:1px solid rgba(47,232,132,.24);background:rgba(47,232,132,.07)}
+${M} .wp-review > div{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed rgba(255,255,255,.08)}
+${M} .wp-review > div:last-child{border-bottom:0}
+${M} .wp-review span{font-size:11.5px;color:var(--ink-dim)}
+${M} .wp-review b{font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:-.01em;text-align:right;color:var(--ink)}
+${M} .wp-review > div:first-child b,${M} .wp-review > div:nth-child(4) b{color:var(--gold)}
+${M} .wp-review-ref{color:var(--mint)!important;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+${M} .wp-doc{
+  max-height:38vh;max-height:38dvh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  padding:14px 16px;margin-bottom:12px;border:1px solid var(--hair);border-radius:14px;
   background:rgba(255,255,255,.02);font-size:12px;line-height:1.65;color:var(--ink-dim);
   scrollbar-width:thin;scrollbar-color:rgba(47,232,132,.3) transparent;
 }
-${R} .wp-doc::-webkit-scrollbar{width:5px}
-${R} .wp-doc::-webkit-scrollbar-thumb{background:rgba(47,232,132,.28);border-radius:999px}
-${R} .wp-doc h4{margin:0 0 4px;font-size:13.5px;color:var(--ink);font-weight:600}
-${R} .wp-doc h5{margin:16px 0 4px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mint)}
-${R} .wp-doc p{margin:0 0 8px}
-${R} .wp-date{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint)}
-${R} .wp-warn{margin-top:14px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.1);color:var(--gold)}
-${R} .wp-check{display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:11px 13px;border-radius:13px;border:1px solid var(--hair);background:rgba(255,255,255,.025);font-size:11.5px;line-height:1.5;color:var(--ink-dim)}
-${R} .wp-check input{width:17px;height:17px;flex:none;margin:1px 0 0;accent-color:#2FE884;cursor:pointer}
-${R} .wp-dialog-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
-${R} .wp-btn{
+${M} .wp-doc::-webkit-scrollbar{width:5px}
+${M} .wp-doc::-webkit-scrollbar-thumb{background:rgba(47,232,132,.28);border-radius:999px}
+${M} .wp-doc h4{margin:0 0 4px;font-size:13.5px;color:var(--ink);font-weight:600}
+${M} .wp-doc h5{margin:16px 0 4px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mint)}
+${M} .wp-doc p{margin:0 0 8px}
+${M} .wp-date{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint)}
+${M} .wp-warn{margin-top:14px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.1);color:var(--gold)}
+${M} .wp-check{display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:11px 13px;border-radius:13px;border:1px solid var(--hair);background:rgba(255,255,255,.025);font-size:11.5px;line-height:1.5;color:var(--ink-dim)}
+${M} .wp-check input{width:17px;height:17px;flex:none;margin:1px 0 0;accent-color:#2FE884;cursor:pointer}
+${M} .wp-dialog-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+${M} .wp-btn{
   cursor:pointer;border-radius:999px;padding:11px 20px;font:inherit;font-weight:700;font-size:11.5px;
   letter-spacing:.07em;text-transform:uppercase;border:1px solid var(--hair);color:var(--ink-dim);
   background:rgba(255,255,255,.03);transition:color .16s ease,border-color .16s ease;
 }
-${R} .wp-btn:hover{color:var(--ink);border-color:rgba(47,232,132,.45)}
+${M} .wp-btn:hover{color:var(--ink);border-color:rgba(47,232,132,.45)}
 
-${R} .wp-dialog--status{max-width:400px;text-align:center;align-items:center}
-${R} .wp-orb{width:62px;height:62px;margin:6px auto 14px;border-radius:999px;display:grid;place-items:center;font-size:26px;line-height:1;color:#06301A}
-${R} [data-state="pending"] .wp-orb{background:conic-gradient(from 0deg,transparent 0turn,#2FE884 .55turn,var(--cyan) .85turn,transparent 1turn);animation:wp-spin 1s linear infinite}
-${R} [data-state="pending"] .wp-orb span{display:block;width:48px;height:48px;border-radius:999px;background:#0A0E0C}
-${R} [data-state="done"] .wp-orb{background:var(--grad);box-shadow:0 0 40px -8px rgba(47,232,132,.8)}
-${R} [data-state="error"] .wp-orb{background:rgba(255,255,255,.06);border:1px solid rgba(255,120,120,.5);color:#FF8B8B}
-${R} [data-state="pending"] .wp-dialog-foot{display:none}
-${R} .wp-msg{margin:0;font-size:12px;line-height:1.6;color:var(--ink-dim)}
-${R} .wp-tx{
+${M} .wp-dialog--status{max-width:400px;text-align:center}
+${M} .wp-orb{width:62px;height:62px;margin:6px auto 14px;border-radius:999px;display:grid;place-items:center;font-size:26px;line-height:1;color:#06301A}
+${M} [data-state="pending"] .wp-orb{background:conic-gradient(from 0deg,transparent 0turn,#2FE884 .55turn,var(--cyan) .85turn,transparent 1turn);animation:wp-spin 1s linear infinite}
+${M} [data-state="pending"] .wp-orb span{display:block;width:48px;height:48px;border-radius:999px;background:#0A0E0C}
+${M} [data-state="done"] .wp-orb{background:var(--grad);box-shadow:0 0 40px -8px rgba(47,232,132,.8)}
+${M} [data-state="error"] .wp-orb{background:rgba(255,255,255,.06);border:1px solid rgba(255,120,120,.5);color:#FF8B8B}
+${M} [data-state="pending"] .wp-dialog-foot{display:none}
+${M} .wp-msg{margin:0;font-size:12px;line-height:1.6;color:var(--ink-dim)}
+${M} .wp-tx{
   display:inline-block;max-width:100%;margin-top:12px;padding:8px 14px;border-radius:999px;cursor:pointer;
   border:1px solid var(--hair);background:rgba(255,255,255,.03);font-family:var(--mono);font-size:11px;
   color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-${R} .wp-tx:hover{color:var(--ink);border-color:rgba(47,232,132,.45)}
-${R} .wp-tx.is-copied::after{content:' — copied';color:var(--mint)}
+${M} .wp-tx:hover{color:var(--ink);border-color:rgba(47,232,132,.45)}
+${M} .wp-tx.is-copied::after{content:' — copied';color:var(--mint)}
 
 @keyframes wp-spin{to{transform:rotate(1turn)}}
 @keyframes wp-grow{from{width:0}to{width:var(--pct)}}
-@media (prefers-reduced-motion:reduce){${R} *{transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){${M} *{transition:none!important;animation:none!important}}
 </style>`;
 }
 
@@ -976,13 +1008,14 @@ export function renderPresale(a, b, c) {
           <p>${esc(st.body)}</p>
         </div>`).join('');
 
-  const initJs = `${RUNTIME};__wp.sync('${rid}')`
+  const initJs = `${RUNTIME};__wp.clean('${rid}');__wp.sync('${rid}')`
     + (s.end > 0 && open ? `;__wp.clock('${rid}',${s.end})` : '')
     + (closedReason ? `;console.warn('[presale] round shows as closed: ${closedReason.replace(/'/g, '')}')` : '');
 
   return /*html*/`
-<section id="${rid}">
+<div id="${rid}-root">
   ${styles(rid)}
+<section id="${rid}">
   <div class="wp-glow" aria-hidden="true"></div>
   <div class="wp-mesh" aria-hidden="true"></div>
 
@@ -1128,13 +1161,19 @@ export function renderPresale(a, b, c) {
       <button type="button" class="wp-link" onclick="${openTerms}">Read the full terms</button>
     </footer>
   </div>
+</section>
+
+  <!-- Dialogs sit outside the section and are moved to <body> the moment they
+       open. An ancestor with container-type, overflow, transform or filter
+       becomes the containing block for position:fixed, which on a phone left
+       the confirm button off screen with nothing able to scroll. -->
 
   <!-- runtime bootstrap: inline handlers survive innerHTML, script tags do not -->
   <img alt="" aria-hidden="true" src="data:," style="position:fixed;width:0;height:0;opacity:0;pointer-events:none"
        onload="${esc(initJs)}" onerror="${esc(initJs)}">
 
   <!-- terms -->
-  <div class="wp-modal" id="${rid}-terms" role="dialog" aria-modal="true" aria-label="Presale terms">
+  <div class="wp-modal" data-wp="${rid}" id="${rid}-terms" role="dialog" aria-modal="true" aria-label="Presale terms">
     <div class="wp-bg" onclick="__wp.close('${rid}','terms')"></div>
     <div class="wp-dialog">
       <div class="wp-dialog-head">
@@ -1169,7 +1208,7 @@ export function renderPresale(a, b, c) {
   </div>
 
   <!-- transaction status -->
-  <div class="wp-modal" id="${rid}-status" data-state="pending" role="dialog" aria-modal="true" aria-live="polite">
+  <div class="wp-modal" data-wp="${rid}" id="${rid}-status" data-state="pending" role="dialog" aria-modal="true" aria-live="polite">
     <div class="wp-bg" onclick="__wp.close('${rid}','status')"></div>
     <div class="wp-dialog wp-dialog--status">
       <div class="wp-orb"><span></span></div>
@@ -1182,7 +1221,7 @@ export function renderPresale(a, b, c) {
       </div>
     </div>
   </div>
-</section>`;
+</div>`;
 }
 
 export default renderPresale;
