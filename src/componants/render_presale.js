@@ -88,7 +88,7 @@ const ALLOCATION = [
   { label: 'Liquidity', pct: 8, note: 'Paired and locked at listing' },
   { label: 'CEX listing', pct: 7, note: 'Exchange reserve' },
   { label: 'Team and investor', pct: 6, note: 'Vested' },
-  { label: 'Referral reward', pct: 4, note: 'Paid to referrers' },
+  { label: 'Airdrop', pct: 4, note: 'Paid to referrers' },
 ];
 
 const TRUST = [
