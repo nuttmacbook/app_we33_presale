@@ -22,7 +22,7 @@
 //       startTime, endTime, minBuy, maxBuy, finalized
 //     },
 //     user: {                                 // mockupUserdata
-//       contributed, tokenAllocate, claimed
+//       contributed, referrerReward, tokenAllocate, claimed
 //     },
 //     token: { name, symbol, supply, chain, address }   // optional overrides
 //   }
@@ -30,6 +30,7 @@
 //   islive     presale open or not. The page also closes itself once the raise
 //              reaches the hardcap, when endTime passes, or once finalized.
 //   contributed     USDT this wallet put in
+//   referrerReward  USDT earned from this wallet's referral link
 //   tokenAllocate   WE this wallet gets after the round. Computed fair launch
 //                   style when the field is not supplied.
 //
@@ -311,6 +312,7 @@ const SALE_ALIASES = {
 
 const USER_ALIASES = {
   contributed: ['contributed', 'contribution', 'userContribution', 'userUSDTBought'],
+  referrerReward: ['referrerReward', 'userUSDTReward', 'userReferrerReward', 'referralReward'],
   tokenAllocate: ['tokenAllocate', 'userTokenAllocate', 'tokenAllocation', 'allocation'],
   claimed: ['claimed', 'userIsClaimed', 'userClaimed', 'isClaimed'],
   usdtBalance: ['usdtBalance', 'userUSDTHas', 'userUsdtBalance', 'usdt'],
@@ -381,6 +383,7 @@ function readUser(u = {}, o = {}) {
   };
   return {
     contributed: big(g('contributed', 'contribution', 'userContribution') ?? 0),
+    reward: big(g('referrerReward') ?? 0),
     allocate: g('tokenAllocate', 'tokenAllocation', 'allocation'),
     claimed: Boolean(g('claimed', 'userClaimed', 'isClaimed')),
   };
@@ -432,7 +435,7 @@ function readSale(d, o = {}) {
     listing: or('listingPrice', LISTING_PRICE),
     start: seconds('startTime'),
     end: seconds('endTime'),
-    minBuy: or('minBuy', 1n * WAD),
+    minBuy: or('minBuy', 10n * WAD),
     maxBuy: or('maxBuy', 0n),
     finalized: Boolean(g('finalized')),
   };
@@ -645,6 +648,11 @@ ${R} .wp-scale{display:flex;justify-content:space-between;margin-top:6px;font-si
 ${R} .wp-scale b{color:var(--mint);font-weight:600}
 
 ${R} .wp-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(6px,.9cqw,9px);margin-top:clamp(13px,1.8cqw,17px)}
+${R} .wp-tiles--3 > :last-child{grid-column:1/-1}
+@container wp (min-width:560px){
+  ${R} .wp-tiles--3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  ${R} .wp-tiles--3 > :last-child{grid-column:auto}
+}
 ${R} .wp-tile{
   display:flex;flex-direction:column;padding:clamp(7px,1.1cqw,11px) clamp(8px,1.2cqw,12px);
   border:1px solid var(--hair);border-radius:var(--tile);background:rgba(255,255,255,.025);
@@ -1085,11 +1093,12 @@ export function renderPresale(a, b, c) {
       <div class="wp-buy">
         ${open ? (connected ? buyBox : buyConnect) : buyClosed}
 
-        <div class="wp-tiles" style="margin-top:clamp(15px,2.2cqw,22px)">
+        <div class="wp-tiles wp-tiles--3" style="margin-top:clamp(15px,2.2cqw,22px)">
           ${tile('Contributed', formatUsd(me.contributed), {
             gold: true,
             note: s.raised > 0n && me.contributed > 0n ? `${pctOf(me.contributed, s.raised).toFixed(2)}% of the round` : 'USDT you put in',
           })}
+          ${tile('Referral reward', formatUsd(me.reward), { gold: true, note: 'USDT from your link' })}
           ${tile('Token allocate', `${formatCompact(myTokens)} ${token.symbol}`, {
             mint: true,
             note: s.finalized ? (me.claimed ? 'claimed' : 'ready to claim') : 'settles at the close',

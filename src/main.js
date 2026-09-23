@@ -34,12 +34,14 @@ async function getContractData(wallet) {
         totalRised,
         userUSDTHas,
         userUSDTBought,
+        userUSDTReward,
         userIsClaimed
     ] = [
         getFairLaunchInfo[0],
         getFairLaunchInfo[2],
         getFairLaunchInfo[3],
         getFairLaunchInfo[4],
+        getFairLaunchInfo[5],
         false
     ];
 
@@ -50,6 +52,7 @@ async function getContractData(wallet) {
         totalRised,
         userUSDTHas,
         userUSDTBought,
+        userUSDTReward,
         userIsClaimed,
         presale: mockupPresaledata,
     };
